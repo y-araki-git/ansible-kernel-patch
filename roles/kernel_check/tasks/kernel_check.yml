@@ -1,0 +1,22 @@
+- name: check process
+  become: yes
+  shell: "ps -aef | sort | sed -e 's# \\+# #g' | cut -d' ' -f1,8- | sort  > /tmp/prosess.list"
+
+- name: check message error
+  become: yes
+  shell: grep -i " err\|fail\|not\|n't" /var/log/messages  > /tmp/message.err
+
+- name: get checked files
+  become: yes
+  fetch:
+    src: /tmp/{{ item }}
+    dest: log/{{ inventory_hostname }}-{{ item }}
+    flat: yes
+  with_items:
+    - prosess.list
+    - message.err
+
+- name: info
+  become: yes
+  shell: echo {{ inventory_hostname }}   OS:{{ ansible_distribution }}{{ansible_distribution_major_version}} kernel:{{ ansible_kernel }} >> log/relust.txt
+  delegate_to: 127.0.0.1

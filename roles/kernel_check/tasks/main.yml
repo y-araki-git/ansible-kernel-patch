@@ -1,0 +1,3 @@
+---
+- include: kernel_check.yml
+  tags: kernel_check

@@ -1,0 +1,7 @@
+---
+- hosts: patch
+#  vars_files:
+#    - vars/{{ stage }}/patch.yml
+  roles:
+    - patch
+

@@ -1,0 +1,72 @@
+- name: replace /etc/yum.conf
+  become: yes
+  replace: 
+    dest: /etc/yum.conf
+    regexp: '^exclude=kernel([^\n]*)$'
+    replace: '#exclude=kernel\1'
+    backup: yes
+  when:   ansible_os_family == 'RedHat' and ansible_distribution_major_version == "7"
+
+- name: update kernel for centos
+  become: yes
+  yum: 
+    name: "{{ item }}"
+    state: present
+    update_cache: yes
+  with_items:
+    - kernel-3.10.0-693.11.6.el7.x86_64
+    - linux-firmware-20170606-58.gitc990aae.el7_4.noarch
+    - microcode_ctl-2.1-22.5.el7_4.x86_64
+  when:   ansible_os_family == 'RedHat' and ansible_distribution_major_version == "7"
+
+- name: copy kernel package
+  become: yes
+  copy:
+    src: linux-image-3.16.0-5-amd64_3.16.51-3+deb8u1_amd64.deb
+    dest: /usr/local/src/
+  when:   ansible_os_family == 'Debian' and ansible_distribution_major_version == "8"
+
+- name: update kernel for debian
+  become: yes
+  apt:
+    deb: /usr/local/src/linux-image-3.16.0-5-amd64_3.16.51-3+deb8u1_amd64.deb
+  when:   ansible_os_family == 'Debian' and ansible_distribution_major_version == "8"
+
+#- name: update kernel for debian 
+#  become: yes
+#  apt:
+#    name: linux-image-3.16.0-5-amd64
+#    state: present
+#    update_cache: yes
+#  when:   ansible_os_family == 'Debian'
+
+- name: show first existin file
+  stat: path=/boot/initrd.img-3.16.0-5-amd64
+  register: stat
+  when:   ansible_os_family == 'Debian' and ansible_distribution_major_version == "8"
+
+- name: change default kernel fro debian
+  become: yes
+  replace:
+    dest: "{{ item.dest }}"
+    regexp: "{{ item.regexp }}"
+    replace: "{{ item.replace }}"
+    backup: yes
+  with_items:
+    - { dest: '/extlinux.conf', regexp: '^kernel boot/[^\n]*$', replace: 'kernel boot/vmlinuz-3.16.0-5-amd64' }
+    - { dest: '/extlinux.conf', regexp: '^append initrd=boot/[^\s]*([^\n]*)$', replace: 'append initrd=boot/initrd.img-3.16.0-5-amd64\1' }
+    - { dest: '/boot/extlinux/extlinux.conf', regexp: '^kernel boot/[^\n]*$', replace: 'kernel boot/vmlinuz-3.16.0-5-amd64' }
+    - { dest: '/boot/extlinux/extlinux.conf', regexp: '^append initrd=boot/[^\s]*([^\n]*)$', replace: 'append initrd=boot/initrd.img-3.16.0-5-amd64\1' }
+  when:   ansible_os_family == 'Debian' and ansible_distribution_major_version == "8" and  stat.stat.exists
+
+- name: restart machine
+  shell: sleep 2 && shutdown -r now
+  async: 1
+  poll: 0
+  become: yes
+  ignore_errors: true
+
+- name: Wait for system to boot up
+  local_action: wait_for host={{ ansible_ssh_host }} port=22 state=started delay=15 timeout=300
+  become: False
+

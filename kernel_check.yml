@@ -1,0 +1,7 @@
+---
+- hosts: kernel_check
+#  vars_files:
+#    - vars/{{ stage }}/patch.yml
+  roles:
+    - kernel_check
+
